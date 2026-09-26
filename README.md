@@ -58,41 +58,64 @@ epoch  29 | recon   78.6
 
 This confirms the encoder/decoder implementation is correct.
 
-### Sparsity is not yet strong enough
+### Sparsity: finding the right alpha
 
-The sparsity term plateaus rather than continuing to fall, and the fraction of "open drawers" per token stays far above the target (a genuinely sparse result should be roughly 1–2% of features active per token, not the 20–26% we currently see):
+Our first sweep (alpha 0.001–0.1) showed almost no effect — sparsity barely moved even at 100x range. A wider sweep (alpha 0.1–10, 80 epochs each) revealed the penalty only starts biting past ~0.3:
 
 | alpha | final recon | final sparsity | avg active features / token |
 |---|---|---|---|
-| 0.001 | 61.1 | 2070.8 | 534.4 (26.1%) |
-| 0.01  | 68.8 | 2048.7 | 529.4 (25.9%) |
-| 0.05  | 77.0 | 1903.4 | 483.9 (23.6%) |
-| 0.1   | 73.5 | 1709.5 | 424.0 (20.7%) |
+| 0.1  |  21.16 | 1390.65 | 335.4 (16.4%) |
+| 0.3  |  60.53 |  801.21 | 140.6 (6.9%) |
+| **1.0**  | **174.19** |  **357.89** | **33.3 (1.6%)** |
+| 3.0  | 679.97 |  174.61 | 6.6 (0.3%) |
+| 10.0 | 870.90 |   88.97 | 1.6 (0.1%) |
 
-_(update this table with the wider alpha sweep -- 0.1 to 10 -- once that finishes running)_
+**Chosen value: alpha = 1.0.** This lands in the target range (roughly 10-50 active features per token, i.e. genuinely sparse rather than "everything a little bit on"), while alpha = 3.0 and 10.0 overcorrect -- too few features stay active, reconstruction quality collapses (recon rises sharply), suggesting the model is starved of the capacity it needs. alpha = 0.1 and 0.3 remain too permissive, with hundreds of features active per token.
 
-### Qualitative feature check
+### Qualitative feature check (alpha = 1.0)
 
-Some features already show clean, single-concept behavior. Feature 2 (at alpha = 0.01) fires almost exclusively on bibliographic citation text:
+Feature 2 shows real, coherent specialization -- 4 of its top 5 activating texts are specifically about the Little Rock Arsenal during the Civil War:
 
 ```
-12.66 | National Mission; Society for the Preservation of Christian Knowledge, 1916
-12.61 | A New Epiphany; Society for the Preservation of Christian Knowledge, 1919
-12.54 | Guardian Angel; Society for the Preservation of Christian Knowledge, 1923
+1.01 | Lt. Col. Dunnington continued to build up his works at Little Rock until November 1862...
+0.93 | This ammunition, and that which I brought with me, was rapidly prepared for use...
+0.85 | Lt. Col. Dunnington's "Returns for the month of August, 1862, at Little Rock Arsenal..."
+0.83 | The Confederate ordnance establishment at Little Rock was reactivated in August, 1862...
 ```
 
-Other features (0 and 1) are still loosely thematic rather than cleanly monosemantic, consistent with the sparsity penalty not yet being strong enough at this alpha.
+Features 0 and 1 are still loosely mixed across topics (a video game, fish biology, art history) rather than one clean concept each. With only 200 documents (500 sampled activations) used for the sanity-check runs so far, there likely isn't enough data diversity yet for all 2048 features to specialize -- this is the next thing to test once training scales up.
+
+### Scaled-up run (401,882 activations)
+
+Trained `full_sae` on the complete activation set from 5000 documents (up from 500 in the sanity check), at the tuned alpha = 1.0, for 150 epochs. Loss converged and flattened by roughly epoch 20-30, meaning fewer epochs would likely suffice for future runs.
+
+**Sparsity held consistently at scale:** 33.1 / 2048 active features per token (1.62%) -- nearly identical to the 33.3 (1.6%) seen on the 500-sample sanity check, confirming alpha = 1.0's sparsity behavior isn't an artifact of a small sample.
+
+**Dead features:** 159 / 2048 (7.8%) never fire across a 2000-sample check. This matches a known limitation the paper itself reports (Section 5) -- not every dictionary slot ends up used, particularly outside the residual stream.
+
+*Note on raw loss magnitude:* the reported loss/recon/sparsity numbers here are much larger than the sanity-check run's because the training loop sums loss across every batch in an epoch, and this run has far more batches (~6,280 vs ~8). Per-batch cost is comparable, not worse.
+
+### Qualitative feature check at scale
+
+With more data, several features are now cleanly monosemantic:
+
+- **Feature 1** fires almost exclusively on text about the *Hellblazer* / *Constantine* comic and film franchise -- a genuinely narrow, single concept.
+- **Feature 2** consistently activates on Holocaust historiography and denial discourse.
+- **Feature 0** leans toward physical architecture and sculpted structures (churches, caves, temple panels).
+- Features 3 and 4 remain more mixed, showing specialization is uneven across the dictionary -- consistent with the paper's own finding that not every feature reaches the same interpretability quality.
+
+Model checkpoint (`sae_checkpoint_alpha1.0.pt`) and full per-epoch loss history (`full_training_history.csv`) are saved in this repo as evidence for this run.
 
 ## Known issues / next steps
 
-- Sparsity penalty needs further tuning — testing a wider alpha range (0.1–10) with longer training (80 epochs) to find a value that meaningfully reduces the number of active features per token.
-- Once a working alpha is found, scale from the 500-activation sanity subset up to several thousand activations for a real training run.
+- Alpha for the sparsity penalty is tuned and confirmed stable at scale (alpha = 1.0, ~1.6% of features active per token, both at 500 and 401,882 activations).
 - Compare against a PCA baseline on the same activations, to demonstrate (as the paper does) that sparse coding finds cleaner features than a simple linear decomposition.
 - Consider a lightweight automated interpretability check (even a smaller open model instead of GPT-4) if time allows, to move beyond manual inspection.
+- Planned Stage 4 experiment: data-size scaling -- compare feature coherence and dead-feature rate across a range of dataset sizes (500 -> 20,000 -> 401,882 activations), since the two runs so far already suggest larger data improves specialization.
 
 ## How to run
 
-See `sae_reproduction_starter.ipynb`. Open in Google Colab, set runtime to T4 GPU, Runtime → Run all. Dependencies are pinned in `requirements.txt`.
+See `sae_reproduction_starter.ipynb`. Open in Google Colab, set runtime to T4 GPU, Runtime → Run all. Dependencies are pinned in `requirements.txt`. Running section 7 onward reproduces the full-scale training run; `sae_checkpoint_alpha1.0.pt` (trained weights) and `full_training_history.csv` (per-epoch loss log) are the artifacts that run produces.
 
 ## Provenance
 
