@@ -6,9 +6,9 @@ Official reference repo (used for reference only, not copied): https://github.co
 
 ## What the paper does
 
-Neurons inside language models are often *polysemantic* — a single neuron reacts to several unrelated concepts, which makes the model hard to interpret. The paper's hypothesis is that this happens because of *superposition*: the model represents more concepts than it has neurons, so it packs multiple concepts into overlapping directions, relying on those concepts rarely firing at the same time.
+Neurons inside language models are often *polysemantic*  a single neuron reacts to several unrelated concepts, which makes the model hard to interpret. The paper's hypothesis is that this happens because of *superposition*: the model represents more concepts than it has neurons, so it packs multiple concepts into overlapping directions, relying on those concepts rarely firing at the same time.
 
-The proposed fix: freeze the trained language model, record its internal activations, and train a separate **sparse autoencoder** on those activations. The autoencoder learns a larger set of "dictionary features" that, empirically, tend to be far more interpretable — each one closer to representing a single clean concept — than the original neurons.
+The proposed fix: freeze the trained language model, record its internal activations, and train a separate **sparse autoencoder** on those activations. The autoencoder learns a larger set of "dictionary features" that, empirically, tend to be far more interpretable each one closer to representing a single clean concept — than the original neurons.
 
 ## What we reproduced (reduced scope)
 
