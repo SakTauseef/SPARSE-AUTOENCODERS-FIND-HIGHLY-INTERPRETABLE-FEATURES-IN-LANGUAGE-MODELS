@@ -1,6 +1,6 @@
 # Stage 4 experiment: effect of training-data size on a sparse autoencoder
 
-**Branch:** `experiment-datasize` [change if you named the branch differently]
+**Branch:** `experiment-datasize`
 **Base:** the group's reproduction of Cunningham et al. (2023), *Sparse Autoencoders Find Highly Interpretable Features in Language Models* (arXiv:2309.08600). The reproduction itself is on `main`.
 
 ## Question
