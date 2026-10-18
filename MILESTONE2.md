@@ -18,12 +18,13 @@
 
 **Changes from Milestone 1 (and why):**
 - **Position 0 of each sequence is dropped.** The first token has an unusually large activation that would distort training.
+- **Line-end newline tokens are dropped.** Our first run showed that the newline ending every WikiText paragraph/heading has an activation ~17x larger than a typical token, so ~1–2% of tokens carried about two-thirds of the variance. An SAE could score a low reconstruction error by learning only those tokens, which made the metrics misleading. The notebook excludes them and prints exactly how much variance they held (`newline_stats.json`). They are also left untouched when the SAE output is put back into the model, and the app skips them.
 - **Activations are mean-centred and scaled** so the average squared length is 1. This makes reconstruction error read as "fraction of variance unexplained." Because of this, α values here are not on the same scale as Milestone 1's α = 1.0.
 - **Loss is averaged per batch**, not summed over an epoch, so numbers are comparable across data sizes.
 
 ## Experiments
 
-1. **Additional experiment (from our proposal): L1 coefficient sweep.** Seven log-spaced α values (0.001 to 1.0), with the same data, dictionary size, seed and epochs. Only α changes. For each run we report:
+1. **Additional experiment (from our proposal): L1 coefficient sweep.** Nine log-spaced α values (0.001 to 1.0, denser between 0.01 and 0.2), with the same data, dictionary size, seed and epochs. Only α changes. For each run we report:
    - FVU (reconstruction error)
    - L0 (average active features per token)
    - dead features
@@ -46,6 +47,7 @@ The 2–3 α values used for spot-checks are picked by a rule written in the not
 
 | File | Contents |
 |---|---|
+| `newline_stats.json` | How many tokens were line-end newlines and what share of the activation they held |
 | `sweep_results.csv` | One row per α: FVU, L0, dead fraction, LM loss, loss recovered |
 | `sweep_training_history.csv` | Per-epoch training curves for every α |
 | `tradeoff.png` | The main experiment figure |
