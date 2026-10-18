@@ -16,14 +16,6 @@ Tracks the origin of every major component, per the assignment's academic integr
 | Sparsity diagnostics (`active_features_per_token`, dead-feature check) | Written by us | Not present in the official repo's public tooling; written to answer our own debugging question about why sparsity plateaued |
 | Checkpoint/history saving (section 7c) | Written by us | Standard `torch.save` / `csv` usage, no external reference |
 
-## Change log
-
-Update this section every time you commit code, not just at the end -- one line is enough.
-
-- **[date]** Initial notebook: model loading, activation collection, autoencoder class, sanity check on one batch. All written by us from the paper's equations.
-- **[date]** Ran first alpha sweep (0.001-0.1) on 500-activation sanity subset -- sparsity term wasn't decreasing meaningfully.
-- **[date]** Wider alpha sweep (0.1-10, 80 epochs each) -- found alpha=1.0 gives ~1.6% active features/token, the target sparsity range.
-- **[date]** Scaled up: 5000 documents -> 401,882 activations, trained `full_sae` at alpha=1.0 for 150 epochs. Sparsity held consistent with the sanity check; found several cleanly monosemantic features (e.g. Hellblazer/Constantine feature).
 
 ## Results
 
